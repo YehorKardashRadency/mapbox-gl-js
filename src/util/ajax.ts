@@ -43,6 +43,7 @@ if (typeof Object.freeze == 'function') {
  * @property {string} credentials `'same-origin'|'include'` Use 'include' to send cookies with cross-origin requests.
  * @property {boolean} collectResourceTiming If true, Resource Timing API information will be collected for these transformed requests and returned in a resourceTiming property of relevant data events.
  * @property {string} referrerPolicy A string representing the request's referrerPolicy. For more information and possible values, see the [Referrer-Policy HTTP header page](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy).
+ * @property {Function} requestHandler A function that replaces a default fetch() request
  * @example
  * // use transformRequest to modify requests that begin with `http://myHost`
  * const map = new Map({
@@ -69,6 +70,7 @@ export type RequestParameters = {
     credentials?: 'same-origin' | 'include';
     collectResourceTiming?: boolean;
     referrerPolicy?: ReferrerPolicy;
+    requestHandler?: (request: Request) => Promise<Response>
 };
 
 export type ResponseCallback<T> = (
@@ -150,8 +152,8 @@ function makeFetchRequest(requestParameters: RequestParameters, callback: Respon
         }
 
         const requestTime = Date.now();
-
-        fetch(request).then(response => {
+        const responsePromise = requestParameters.requestHandler ? requestParameters.requestHandler(request) : fetch(request);
+        responsePromise.then(response => {
             if (response.ok) {
                 const cacheableResponse = cacheIgnoringSearch ? response.clone() : null;
                 return finishRequest(response, cacheableResponse, requestTime);
